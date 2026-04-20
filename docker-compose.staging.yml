@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: ./api
+    env_file:
+      - ./api/.env.staging
+    environment:
+      ENV_FILE: .env.staging
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_APP_NAME: Node React Boilerplate (Staging)
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+      - web
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
+    restart: unless-stopped

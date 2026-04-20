@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: ./api
+    env_file:
+      - ./api/.env.production
+    environment:
+      ENV_FILE: .env.production
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_APP_NAME: Node React Boilerplate
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+      - web
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    restart: unless-stopped

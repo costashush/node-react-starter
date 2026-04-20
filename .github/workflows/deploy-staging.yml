@@ -1,0 +1,46 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "${{ secrets.SSH_PORT || 22 }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync project
+        run: |
+          rsync -az --delete \
+            --exclude node_modules \
+            --exclude .git \
+            -e "ssh -p ${{ secrets.SSH_PORT || 22 }}" \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+      - name: Write environment files
+        run: |
+          ssh -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
+          mkdir -p "${{ secrets.DEPLOY_PATH }}/api" "${{ secrets.DEPLOY_PATH }}/web"
+          cat > "${{ secrets.DEPLOY_PATH }}/api/.env.staging" << 'ENVAPI'
+          ${{ secrets.STAGING_API_ENV }}
+          ENVAPI
+          cat > "${{ secrets.DEPLOY_PATH }}/web/.env.staging" << 'ENVWEB'
+          ${{ secrets.STAGING_WEB_ENV }}
+          ENVWEB
+          EOF
+
+      - name: Deploy staging
+        run: |
+          ssh -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
+          cd "${{ secrets.DEPLOY_PATH }}"
+          docker compose -f docker-compose.staging.yml up -d --build
+          EOF
