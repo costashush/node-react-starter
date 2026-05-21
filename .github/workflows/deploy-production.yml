@@ -28,19 +28,16 @@ jobs:
 
       - name: Write environment files
         run: |
-          ssh -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
-          mkdir -p "${{ secrets.DEPLOY_PATH }}/api" "${{ secrets.DEPLOY_PATH }}/web"
-          cat > "${{ secrets.DEPLOY_PATH }}/api/.env.production" << 'ENVAPI'
-          ${{ secrets.PRODUCTION_API_ENV }}
-          ENVAPI
-          cat > "${{ secrets.DEPLOY_PATH }}/web/.env.production" << 'ENVWEB'
-          ${{ secrets.PRODUCTION_WEB_ENV }}
-          ENVWEB
-          EOF
+          ssh -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "mkdir -p ${{ secrets.DEPLOY_PATH }}/api ${{ secrets.DEPLOY_PATH }}/web"
+          echo "${{ secrets.PRODUCTION_API_ENV }}" | ssh -p "${{ secrets.SSH_PORT || 22 }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cat > ${{ secrets.DEPLOY_PATH }}/api/.env.production"
+          echo "${{ secrets.PRODUCTION_WEB_ENV }}" | ssh -p "${{ secrets.SSH_PORT || 22 }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cat > ${{ secrets.DEPLOY_PATH }}/web/.env.production"
 
       - name: Deploy production
         run: |
-          ssh -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
-          cd "${{ secrets.DEPLOY_PATH }}"
-          docker compose -f docker-compose.production.yml up -d --build
-          EOF
+          ssh -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ secrets.DEPLOY_PATH }} && docker compose -f docker-compose.production.yml up -d --build"
